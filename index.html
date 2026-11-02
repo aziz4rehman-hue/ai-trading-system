@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Trading System | Claude Powered</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --panel: #111827;
+      --border: #1f2937;
+      --accent: #8b5cf6;
+      --accent2: #06b6d4;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    header {
+      background: linear-gradient(90deg, #111827 0%, #1e1b4b 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    .live-badge {
+      background: #064e3b;
+      color: var(--green);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .ticker-bar {
+      background: #0f172a;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 20px;
+      font-size: 0.9rem;
+    }
+    .ticker-item .price { font-weight: 700; }
+    .up { color: var(--green); }
+    .down { color: var(--red); }
+    .main {
+      display: grid;
+      grid-template-columns: 280px 1fr 300px;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .panel h3 {
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .agent-network {
+      height: 420px;
+      position: relative;
+      background: radial-gradient(circle at center, #1e1b4b 0%, #0a0e17 70%);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .node {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(139, 92, 246, 0.2);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      text-align: center;
+      font-weight: 600;
+      animation: float 4s ease-in-out infinite;
+    }
+    .node.central {
+      width: 90px;
+      height: 90px;
+      background: var(--accent);
+      color: white;
+      font-size: 0.85rem;
+      box-shadow: 0 0 40px var(--accent);
+      z-index: 10;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .signal-item, .position-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .signal-item:last-child, .position-item:last-child { border: none; }
+    .badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge.buy { background: #064e3b; color: var(--green); }
+    .badge.sell { background: #7f1d1d; color: var(--red); }
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 3px;
+      margin-top: 12px;
+    }
+    .heat-cell {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      transition: transform 0.2s;
+    }
+    .heat-cell:hover { transform: scale(1.2); z-index: 1; }
+    .chart-container {
+      height: 280px;
+      margin-top: 8px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--green);
+    }
+    .stat .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border);
+      margin-top: 20px;
+    }
+    @media (max-width: 1200px) {
+      .main { grid-template-columns: 1fr; }
+      .agent-network { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-icon">✦</div>
+      AI TRADING SYSTEM
+    </div>
+    <div class="live-badge">● LIVE · AI AGENTS ACTIVE</div>
+  </header>
+
+  <div class="ticker-bar" id="ticker"></div>
+
+  <div class="main">
+    <!-- Left: Agents & Signals -->
+    <div>
+      <div class="panel">
+        <h3>AI Agents</h3>
+        <div id="agents-list"></div>
+      </div>
+      <div class="panel" style="margin-top: 16px;">
+        <h3>Live Signals</h3>
+        <div id="signals"></div>
+      </div>
+    </div>
+
+    <!-- Center: Network + Chart -->
+    <div>
+      <div class="panel agent-network" id="network"></div>
+      <div class="panel" style="margin-top: 16px;">
+        <h3>BTC/USDT · 1H Chart</h3>
+        <div class="chart-container">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Positions & Heatmap -->
+    <div>
+      <div class="panel">
+        <h3>Portfolio</h3>
+        <div class="stats">
+          <div class="stat">
+            <div class="value" id="pnl">+$2,847</div>
+            <div class="label">24h PnL</div>
+          </div>
+          <div class="stat">
+            <div class="value">67.4%</div>
+            <div class="label">Win Rate</div>
+          </div>
+        </div>
+        <div id="positions"></div>
+      </div>
+      <div class="panel" style="margin-top: 16px;">
+        <h3>Market Heatmap</h3>
+        <div class="heatmap" id="heatmap"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    AI Trading System · Powered by advanced AI agents · Demo interface (not financial advice) · Built with Claude-inspired architecture
+  </footer>
+
+  <script>
+    const coins = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT'];
+    const agents = [
+      { name: 'Market Scanner', status: 'active' },
+      { name: 'Technical Analyst', status: 'active' },
+      { name: 'Sentiment Engine', status: 'active' },
+      { name: 'Risk Manager', status: 'active' },
+      { name: 'Execution Agent', status: 'standby' },
+      { name: 'Portfolio Optimizer', status: 'active' }
+    ];
+
+    // Ticker
+    async function loadTicker() {
+      const bar = document.getElementById('ticker');
+      try {
+        const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbols=["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT"]');
+        const data = await res.json();
+        bar.innerHTML = data.map(d => {
+          const chg = parseFloat(d.priceChangePercent);
+          const cls = chg >= 0 ? 'up' : 'down';
+          const arrow = chg >= 0 ? '▲' : '▼';
+          return `<span class="ticker-item"><strong>${d.symbol.replace('USDT','')}</strong> <span class="price">$${parseFloat(d.lastPrice).toLocaleString(undefined,{maximumFractionDigits:2})}</span> <span class="${cls}">${arrow} ${Math.abs(chg).toFixed(2)}%</span></span>`;
+        }).join('');
+      } catch(e) {
+        bar.innerHTML = coins.slice(0,5).map(c => `<span class="ticker-item"><strong>${c.replace('USDT','')}</strong> <span class="price">Loading...</span></span>`).join('');
+      }
+    }
+
+    // Agents list
+    function renderAgents() {
+      document.getElementById('agents-list').innerHTML = agents.map(a =>
+        `<div class="signal-item"><span>${a.name}</span><span class="badge ${a.status==='active'?'buy':'sell'}">${a.status}</span></div>`
+      ).join('');
+    }
+
+    // Signals
+    const signals = [
+      { pair: 'BTC/USDT', type: 'BUY', conf: '87%', reason: 'Breakout + volume' },
+      { pair: 'ETH/USDT', type: 'HOLD', conf: '72%', reason: 'Consolidation' },
+      { pair: 'SOL/USDT', type: 'BUY', conf: '81%', reason: 'Momentum surge' },
+      { pair: 'XRP/USDT', type: 'SELL', conf: '64%', reason: 'Resistance hit' }
+    ];
+    function renderSignals() {
+      document.getElementById('signals').innerHTML = signals.map(s =>
+        `<div class="signal-item">
+          <div><strong>${s.pair}</strong><br><small style="color:#9ca3af">${s.reason}</small></div>
+          <span class="badge ${s.type==='BUY'?'buy':s.type==='SELL'?'sell':'buy'}">${s.type} ${s.conf}</span>
+        </div>`
+      ).join('');
+    }
+
+    // Positions
+    const positions = [
+      { pair: 'BTC', size: '0.12', entry: '67240', pnl: '+4.2%' },
+      { pair: 'ETH', size: '2.4', entry: '3480', pnl: '+1.8%' },
+      { pair: 'SOL', size: '45', entry: '178', pnl: '+6.1%' }
+    ];
+    function renderPositions() {
+      document.getElementById('positions').innerHTML = positions.map(p =>
+        `<div class="position-item">
+          <div><strong>${p.pair}</strong><br><small>${p.size} @ $${p.entry}</small></div>
+          <span class="up">${p.pnl}</span>
+        </div>`
+      ).join('');
+    }
+
+    // Network nodes
+    function renderNetwork() {
+      const net = document.getElementById('network');
+      const positions = [
+        { x: '50%', y: '50%', central: true, label: 'AI Core' },
+        { x: '20%', y: '25%', label: 'Scanner' },
+        { x: '80%', y: '20%', label: 'Analyst' },
+        { x: '15%', y: '70%', label: 'Risk' },
+        { x: '85%', y: '75%', label: 'Executor' },
+        { x: '50%', y: '15%', label: 'Sentiment' },
+        { x: '50%', y: '85%', label: 'Optimizer' }
+      ];
+      net.innerHTML = positions.map((p, i) =>
+        `<div class="node ${p.central ? 'central' : ''}" style="left:${p.x}; top:${p.y}; transform:translate(-50%,-50%); animation-delay:${i*0.3}s">${p.label}</div>`
+      ).join('');
+    }
+
+    // Heatmap
+    function renderHeatmap() {
+      const hm = document.getElementById('heatmap');
+      const colors = ['#10b981','#34d399','#6ee7b7','#f59e0b','#fbbf24','#ef4444','#f87171','#06b6d4','#8b5cf6','#a78bfa'];
+      hm.innerHTML = Array.from({length: 40}, () => {
+        const c = colors[Math.floor(Math.random()*colors.length)];
+        return `<div class="heat-cell" style="background:${c}; opacity:${0.5 + Math.random()*0.5}"></div>`;
+      }).join('');
+    }
+
+    // Chart
+    async function loadChart() {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      try {
+        const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=48');
+        const data = await res.json();
+        const labels = data.map(k => new Date(k[0]).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
+        const closes = data.map(k => parseFloat(k[4]));
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'BTC/USDT',
+              data: closes,
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139, 92, 246, 0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: '#9ca3af', maxTicksLimit: 8 }, grid: { color: '#1f2937' } },
+              y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } }
+            }
+          }
+        });
+      } catch(e) {
+        // Fallback static chart
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: Array.from({length: 20}, (_,i) => i),
+            datasets: [{ data: [67000,67200,66800,67500,68000,67800,68500,68200,69000,68800], borderColor: '#8b5cf6', tension: 0.3 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+      }
+    }
+
+    // Init
+    loadTicker();
+    renderAgents();
+    renderSignals();
+    renderPositions();
+    renderNetwork();
+    renderHeatmap();
+    loadChart();
+
+    // Refresh prices every 15s
+    setInterval(loadTicker, 15000);
+  </script>
+</body>
+</html>
